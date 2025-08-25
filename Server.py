@@ -13,6 +13,7 @@ clients = []
 nicknames = []
 client_ips = []
 banned_ips = set()
+#Sunucunun düzgün çalışabilmesi için Log ve Ban txt dosyalarının oluşturulduğundan emin olun.
 LOG_FILE = "log.txt"
 BANNED_FILE = "banned_ips.txt"
 
@@ -196,3 +197,4 @@ server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((HOST, PORT))
 threading.Thread(target=server_commands, daemon=True).start()
 receive()
+
