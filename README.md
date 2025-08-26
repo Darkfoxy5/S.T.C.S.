@@ -22,3 +22,4 @@ Server dosyasını çalıştırın.
 Server dosyasının içindeki sunucu şifresi gibi ayarları yapın.
 Client dosyalarını indirip IP ve şifreyi girerek bağlanın (kullanıcı komutlarını öğrenmek için /help komutunu kullanın).
 Sunucu terminalinden moderasyon komutlarını (/kick, /ban, /unban, /say, /shutdown) kullanabilirsiniz.
+#
