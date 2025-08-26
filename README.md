@@ -1,5 +1,3 @@
----
-
 # 🌐 S.T.C.S Projesi
 
 **Proje Adı:** S.T.C.S (Simple Terminal Communication System)
