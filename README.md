@@ -1,13 +1,13 @@
-# 🌐 S.T.C.S
+# 🌐 S.T.C.S.
 
-**Proje Adı:** S.T.C.S (Simple Terminal Communication System)
-**Felsefemiz:** S.T.C.S, kullanıcıların ve geliştiricilerin özgürce iletişim kurabileceği bir alan yaratmayı amaçlayan açık kaynaklı bir yazılımdır.
+**Proje Adı:** S.T.C.S. (Simple Terminal Communication System)
+**Felsefemiz:** S.T.C.S., kullanıcıların ve geliştiricilerin özgürce iletişim kurabileceği bir alan yaratmayı amaçlayan açık kaynaklı bir yazılımdır.
 
 ---
 
 ## 📖 Proje Hakkında
 
-S.T.C.S, açık kaynak ilkeleriyle geliştirilmiş bir projedir ve topluluk katkılarına açıktır.
+S.T.C.S., açık kaynak ilkeleriyle geliştirilmiş bir projedir ve topluluk katkılarına açıktır.
 Projeye dahil olan herkes, geliştirme süreçlerine katkıda bulunabilir ve deneyimlerini paylaşabilir.
 
 ---
@@ -32,7 +32,7 @@ Katkı yapmak isteyenler aşağıdaki adımları izleyebilir:
 
 ❗ Bu Metni Görüyorsanız Projemiz **"Pre-Alpha"** Sürümündedir.
 
-S.T.C.S **“olduğu gibi”** sunulmaktadır. Kullanımından doğabilecek her türlü sorumluluk kullanıcıya aittir.
+S.T.C.S. **“olduğu gibi”** sunulmaktadır. Kullanımından doğabilecek her türlü sorumluluk kullanıcıya aittir.
 
 ---
 
