@@ -1,25 +1,50 @@
-# S.T.C.S.
-Simple Terminal Communication System
-#
-**Ne yapabiliyor:**
+---
 
-Terminal üzerinden kullanıcılar arası sohbet.
-Takma ad ve IP kontrolü ile aynı IP’den birden fazla client açılmasını veya aynı takma adın kullanılmasını engeller.
-Sunucu terminalinden yönetici işlemleri: /kick, /ban, /unban, /say (sohbete sunucu olarak mesaj gönderme), /shutdown.
-Client ve server dosyaları internete bağlı ve Python yüklü her cihazda teorik olarak çalışabilir.
-Şu ana kadar yapılan testlerde Linux, Windows ve Android (Termux ile, bazı hatalar ileriki sürümlerde düzeltilecektir.) üzerinde çalıştığı onaylanmıştır.
-Basit şifre koruması.
+# 🌐 S.T.C.S Projesi
 
-**Henüz eksik veya sınırlı:**
+**Proje Adı:** S.T.C.S (Simple Terminal Communication System)
+**Felsefemiz:** S.T.C.S, kullanıcıların ve geliştiricilerin özgürce iletişim kurabileceği bir alan yaratmayı amaçlayan açık kaynaklı bir yazılımdır.
 
-Şu anlık yalnızca yerel ağ üzerinde kararlı çalıştığı doğrulanmıştır.
-Hatalar ve aksaklıklar olabilir.
-Güvenlik önlemleri ilkel düzeydedir.
+---
 
-**Nasıl kullanılır:**
+## 📖 Proje Hakkında
 
-Server dosyasını çalıştırın.
-Server dosyasının içindeki sunucu şifresi gibi ayarları yapın.
-Client dosyalarını indirip IP ve şifreyi girerek bağlanın (kullanıcı komutlarını öğrenmek için /help komutunu kullanın).
-Sunucu terminalinden moderasyon komutlarını (/kick, /ban, /unban, /say, /shutdown) kullanabilirsiniz.
-#
+S.T.C.S, açık kaynak ilkeleriyle geliştirilmiş bir projedir ve topluluk katkılarına açıktır.
+Projeye dahil olan herkes, geliştirme süreçlerine katkıda bulunabilir ve deneyimlerini paylaşabilir.
+
+---
+
+## 🤝 Katkıda Bulunma
+
+Katkı yapmak isteyenler aşağıdaki adımları izleyebilir:
+
+1. Projeyi **fork** edin.
+2. Kendi fork’unuzda bir **branch** açın.
+3. İstediğiniz değişiklikleri yapın.
+4. Değişiklikleri test edin ve çalıştığından emin olun.
+5. Bir **pull request (PR)** oluşturun.
+6. PR açıklamasında yaptığınız değişiklikleri net olarak belirtin.
+7. Lisans ve proje ismi kurallarına uyduğunuzdan emin olun.
+
+> Daha fazla detay için lisans ve türev çalışma şartlarını [LICENSE](https://github.com/dark3434234/S.T.C.S./blob/a639bcd42eab56f7252e147ccffc1233cfb0b02b/LICENSE) dosyasında bulabilirsiniz.
+
+---
+
+## ⚠️ Sorumluluk Reddi / Uyarı
+
+❗ Bu Metni Görüyorsanız Projemiz **"Pre-Alpha"** Sürümündedir.
+S.T.C.S **“olduğu gibi”** sunulmaktadır. Kullanımından doğabilecek her türlü sorumluluk kullanıcıya aittir.
+
+---
+
+## 📝 Lisans
+
+* Lisans: [AGPLv3](https://www.gnu.org/licenses/agpl-3.0.html)
+
+---
+
+## 📬 İletişim
+
+* Discord: `spy8571`
+
+---
