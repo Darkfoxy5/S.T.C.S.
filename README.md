@@ -31,7 +31,8 @@ Katkı yapmak isteyenler aşağıdaki adımları izleyebilir:
 ## ⚠️ Sorumluluk Reddi / Uyarı
 
 ❗ Bu Metni Görüyorsanız Projemiz **"Pre-Alpha"** Sürümündedir.
-***S.T.C.S **“olduğu gibi”** sunulmaktadır. Kullanımından doğabilecek her türlü sorumluluk kullanıcıya aittir.
+
+S.T.C.S **“olduğu gibi”** sunulmaktadır. Kullanımından doğabilecek her türlü sorumluluk kullanıcıya aittir.
 
 ---
 
