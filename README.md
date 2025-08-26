@@ -9,6 +9,7 @@
 ## 📖 Proje Hakkında
 
 S.T.C.S., açık kaynak ilkeleriyle geliştirilmiş bir projedir ve topluluk katkılarına açıktır.
+
 Projeye dahil olan herkes, geliştirme süreçlerine katkıda bulunabilir ve deneyimlerini paylaşabilir.
 
 ---
