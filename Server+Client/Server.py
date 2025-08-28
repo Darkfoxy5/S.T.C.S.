@@ -69,7 +69,7 @@ def handle(client, nickname, ip):
 
                 else:
                     client.send("Bilinmeyen komut veya yetkisiz.\n".encode('utf-8'))
-
+        
             else:
                 timestamp = datetime.now().strftime("%H:%M")
                 full_message = f"[{timestamp}] {nickname}: {msg}"
@@ -139,7 +139,22 @@ def server_commands():
     while True:
         cmd = input()
         parts = cmd.split(" ", 2)
-        if parts[0].lower() == "/shutdown":
+        command = parts[0].lower()
+
+        if command == "/help":
+            help_text = (
+                "Sunucu terminali için kullanılabilir komutlar:\n"
+                "/shutdown -> Sunucuyu kapatır\n"
+                "/kick <kullanıcı> -> Belirtilen kullanıcıyı atar\n"
+                "/ban <kullanıcı> -> Belirtilen kullanıcıyı IP ile banlar\n"
+                "/unban <IP> -> Banlı IP'nin banını kaldırır\n"
+                "/say <mesaj> -> Sunucu olarak sohbet penceresine mesaj gönderir\n"
+                "/list -> Bağlı kullanıcıları listeler\n"
+            )
+            print(help_text)
+            continue
+
+        if command == "/shutdown":
             broadcast("Sunucu kapatılıyor...\n")
             for c in clients:
                 c.close()
@@ -147,7 +162,7 @@ def server_commands():
             print("Sunucu kapatıldı.")
             exit()
 
-        elif parts[0].lower() == "/kick" and len(parts) >= 2:
+        elif command == "/kick" and len(parts) >= 2:
             kick_name = parts[1]
             if kick_name in nicknames:
                 idx = nicknames.index(kick_name)
@@ -160,7 +175,7 @@ def server_commands():
             else:
                 print(f"Kullanıcı {kick_name} bulunamadı.")
 
-        elif parts[0].lower() == "/ban" and len(parts) >= 2:
+        elif command == "/ban" and len(parts) >= 2:
             ban_name = parts[1]
             if ban_name in nicknames:
                 idx = nicknames.index(ban_name)
@@ -174,7 +189,7 @@ def server_commands():
             else:
                 print(f"Kullanıcı {ban_name} bulunamadı.")
 
-        elif parts[0].lower() == "/unban" and len(parts) >= 2:
+        elif command == "/unban" and len(parts) >= 2:
             ip = parts[1]
             if ip in banned_ips:
                 banned_ips.remove(ip)
@@ -184,15 +199,17 @@ def server_commands():
             else:
                 print(f"{ip} banlı değil.")
 
-        elif parts[0].lower() == "/say" and len(parts) >= 2:
+        elif command == "/say" and len(parts) >= 2:
             message = parts[1]
             broadcast(f"[Sunucu]: {message}\n")
             print(f"[Sunucu]: {message}")
 
-        elif parts[0].lower() == "/list":
+        elif command == "/list":
             print(f"Bağlı kullanıcılar: {', '.join(nicknames)}")
+
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((HOST, PORT))
 threading.Thread(target=server_commands, daemon=True).start()
 receive()
+
