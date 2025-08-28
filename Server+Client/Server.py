@@ -17,123 +17,149 @@ LOG_FILE = "log.txt"
 BANNED_FILE = "banned_ips.txt"
 
 # Banlı IP'leri yükle
-if os.path.exists(BANNED_FILE):
-    with open(BANNED_FILE, "r") as f:
-        for line in f:
-            banned_ips.add(line.strip())
+try:
+    if os.path.exists(BANNED_FILE):
+        with open(BANNED_FILE, "r") as f:
+            for line in f:
+                banned_ips.add(line.strip())
+    print("Ban sistemi aktif!")
+except:
+    print("Ban sistemi başlatılamadı!")
 
 # Log kaydı
-def log_message(message):
-    with open(LOG_FILE, "a", encoding="utf-8") as f:
-        f.write(message + "\n")
+try:
+    def log_message(message):
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(message + "\n")
+    print("Log sistemi aktif!")
+except:
+    print("Log sistemi başlatılamadı!")
 
-def save_banned_ips():
-    with open(BANNED_FILE, "w") as f:
-        for ip in banned_ips:
-            f.write(ip + "\n")
+#Ban IP kayıtları
+try:
+    def save_banned_ips():
+        with open(BANNED_FILE, "w") as f:
+            for ip in banned_ips:
+                f.write(ip + "\n")
+    print("Ban kaydetme sistemi aktif!")
+except:
+    print("Ban kaydetme sistemi başlatılamadı!")
 
-# Mesajların alımı/gönderimi ve kulanıcı komutları
-def broadcast(message, sender=None):
-    for c in clients:
-        if c != sender:
+# Broadcast sistemi
+try:
+    def broadcast(message, sender=None):
+        for c in clients:
+            if c != sender:
+                try:
+                    c.send(message.encode('utf-8'))
+                except:
+                    pass
+    print("Broadcast sistemi aktif!")
+except:
+    print("Broadcast sistemi başlatılamadı!")
+
+try:
+    def handle(client, nickname, ip):
+        while True:
             try:
-                c.send(message.encode('utf-8'))
-            except:
-                pass
+                msg = client.recv(1024).decode('utf-8').strip()
+                if not msg:
+                    continue
 
-def handle(client, nickname, ip):
-    while True:
-        try:
-            msg = client.recv(1024).decode('utf-8').strip()
-            if not msg:
-                continue
+                if msg.startswith("/"):
+                    parts = msg.split(" ", 2)
+                    cmd = parts[0].lower()
 
-            if msg.startswith("/"):
-                parts = msg.split(" ", 2)
-                cmd = parts[0].lower()
+                    if cmd == "/list":
+                        user_list = ", ".join(nicknames)
+                        client.send(f"Bağlı kullanıcılar: {user_list}\n".encode('utf-8'))
 
-                if cmd == "/list":
-                    user_list = ", ".join(nicknames)
-                    client.send(f"Bağlı kullanıcılar: {user_list}\n".encode('utf-8'))
+                    elif cmd == "/pm" and len(parts) == 3:
+                        target_name = parts[1]
+                        private_msg = parts[2]
+                        if target_name in nicknames:
+                            target_index = nicknames.index(target_name)
+                            target_client = clients[target_index]
+                            target_client.send(f"[Özel] {nickname}: {private_msg}".encode('utf-8'))
+                            client.send(f"[Özel] {nickname} -> {target_name}: {private_msg}".encode('utf-8'))
+                        else:
+                            client.send(f"Kullanıcı {target_name} bulunamadı.\n".encode('utf-8'))
 
-                elif cmd == "/pm" and len(parts) == 3:
-                    target_name = parts[1]
-                    private_msg = parts[2]
-                    if target_name in nicknames:
-                        target_index = nicknames.index(target_name)
-                        target_client = clients[target_index]
-                        target_client.send(f"[Özel] {nickname}: {private_msg}".encode('utf-8'))
-                        client.send(f"[Özel] {nickname} -> {target_name}: {private_msg}".encode('utf-8'))
                     else:
-                        client.send(f"Kullanıcı {target_name} bulunamadı.\n".encode('utf-8'))
-
+                        client.send("Bilinmeyen komut veya yetkisiz.\n".encode('utf-8'))
+            
                 else:
-                    client.send("Bilinmeyen komut veya yetkisiz.\n".encode('utf-8'))
-        
-            else:
-                timestamp = datetime.now().strftime("%H:%M")
-                full_message = f"[{timestamp}] {nickname}: {msg}"
-                print(full_message)
-                log_message(full_message)
-                broadcast(full_message, client)
+                    timestamp = datetime.now().strftime("%H:%M")
+                    full_message = f"[{timestamp}] {nickname}: {msg}"
+                    print(full_message)
+                    log_message(full_message)
+                    broadcast(full_message, client)
 
-        except:
-            break
+            except:
+                break
 
-    if client in clients:
-        index = clients.index(client)
-        clients.remove(client)
-        client.close()
-        nicknames.remove(nickname)
-        client_ips.remove(ip)
-        broadcast(f"{nickname} ayrıldı!\n", None)
-        print(f"{nickname} ayrıldı.")
+        if client in clients:
+            index = clients.index(client)
+            clients.remove(client)
+            client.close()
+            nicknames.remove(nickname)
+            client_ips.remove(ip)
+            broadcast(f"{nickname} ayrıldı!\n", None)
+            print(f"{nickname} ayrıldı.")
+    print("Handle sistemi aktif!")
+except:
+    print("Handle sistemi başlatılamadı!")
+
 #Giriş denetimi
-def receive():
-    server.listen()
-    print(f"Sunucu {HOST}:{PORT} adresinde çalışıyor...")
-    while True:
-        client, address = server.accept()
-        ip = address[0]
+try:
+    def receive():
+     server.listen()
+     print(f"Sunucu {HOST}:{PORT} adresinde çalışıyor...")
+     while True:
+         client, address = server.accept()
+         ip = address[0]
 
-        if ip in banned_ips:
-            client.send("Bu IP yasaklı!\n".encode('utf-8'))
-            client.close()
-            continue
+         if ip in banned_ips:
+             client.send("Bu IP yasaklı!\n".encode('utf-8'))
+             client.close()
+             continue
 
-        if ip in client_ips:
-            client.send("Bu IP zaten bağlı! Birden fazla oturum açamazsınız.\n".encode('utf-8'))
-            client.close()
-            continue
+         if ip in client_ips:
+             client.send("Bu IP zaten bağlı! Birden fazla oturum açamazsınız.\n".encode('utf-8'))
+             client.close()
+             continue
 
-        # Şifre kontrolü
-        password = client.recv(1024).decode('utf-8').strip()
-        if password != SERVER_PASSWORD:
-            client.send("Hatalı şifre!\n".encode('utf-8'))
-            client.close()
-            continue
+         # Şifre kontrolü
+         password = client.recv(1024).decode('utf-8').strip()
+         if password != SERVER_PASSWORD:
+             client.send("Hatalı şifre!\n".encode('utf-8'))
+             client.close()
+             continue
 
-        # Ad sorulması  
-        client.send("Lütfen adınızı girin: ".encode('utf-8'))
-        nickname = client.recv(1024).decode('utf-8').strip()
-        if not nickname:
-            nickname = "Anonim"
+         # Ad sorulması  
+         client.send("Lütfen adınızı girin: ".encode('utf-8'))
+         nickname = client.recv(1024).decode('utf-8').strip()
+         if not nickname:
+             nickname = "Anonim"
 
-        if nickname in nicknames:
-            client.send("Bu takma ad zaten kullanılıyor.\n".encode('utf-8'))
-            client.close()
-            continue
+         if nickname in nicknames:
+             client.send("Bu takma ad zaten kullanılıyor.\n".encode('utf-8'))
+             client.close()
+             continue
 
-        clients.append(client)
-        nicknames.append(nickname)
-        client_ips.append(ip)
+         clients.append(client)
+         nicknames.append(nickname)
+         client_ips.append(ip)
 
-        print(f"{ip} bağlandı. Takma ad: {nickname}")
-        broadcast(f"{nickname} sohbete katıldı!\n", client)
-        client.send("Sohbete hoş geldin!\n".encode('utf-8'))
+         print(f"{ip} bağlandı. Takma ad: {nickname}")
+         broadcast(f"{nickname} sohbete katıldı!\n", client)
+         client.send("Sohbete hoş geldin!\n".encode('utf-8'))
 
-        thread = threading.Thread(target=handle, args=(client, nickname, ip))
-        thread.start()
+         thread = threading.Thread(target=handle, args=(client, nickname, ip))
+         thread.start()
+    print("Giriş Denetim Sistemi başlatıldı!")   
+except:
+    print("Giriş Denetim Sisteni başlatılamadı!")           
 #Sunucuya özel  komutlar
 def server_commands():
     while True:
@@ -200,17 +226,28 @@ def server_commands():
                 print(f"{ip} banlı değil.")
 
         elif command == "/say" and len(parts) >= 2:
-            message = parts[1]
+            message = " ".join(parts[1:])
             broadcast(f"[Sunucu]: {message}\n")
             print(f"[Sunucu]: {message}")
 
         elif command == "/list":
             print(f"Bağlı kullanıcılar: {', '.join(nicknames)}")
 
+try:
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind((HOST, PORT))
+    print("Sunucu soketi aktif!")
+except:
+    print("Sunucu soketi başlatılamadı!")
 
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.bind((HOST, PORT))
-threading.Thread(target=server_commands, daemon=True).start()
-receive()
+try:
+    threading.Thread(target=server_commands, daemon=True).start()
+    print("Sunucu komut sistemi aktif!")
+except:
+    print("Sunucu komut sistemi başlatılamadı!")
 
-
+try:
+    print("Bağlantı dinleme başlatılıyor...")
+    receive()
+except:
+    print("Bağlantı dinleme başlatılamadı!")
