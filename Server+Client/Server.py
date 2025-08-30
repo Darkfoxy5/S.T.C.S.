@@ -13,6 +13,7 @@ clients = []
 nicknames = []
 client_ips = []
 banned_ips = set()
+lock = threading.Lock()
 BANNED_FILE = "banned_ips.txt"
 
 # Banlı IP'leri yükle
@@ -38,66 +39,88 @@ except Exception as e:
 # Broadcast sistemi
 try:
     def broadcast(message, sender=None):
-        for c in clients:
-            if c != sender:
-                try:
-                    c.send(message.encode('utf-8'))
-                except:
-                    pass
+        with lock:
+            for c in clients[:]:
+                if c != sender:
+                    try:
+                        c.send(message.encode('utf-8'))
+                    except (ConnectionResetError, OSError) as e:
+                            idx = clients.index(c)
+                            removed_nick = nicknames[idx]
+                            clients.pop(idx)
+                            nicknames.pop(idx)
+                            client_ips.pop(idx)
+                            print(f"{removed_nick} bağlantısı broadcast sırasında kesildi")
+
     print("Broadcast sistemi aktif!")
 except Exception as e:
     print(f"Broadcast sistemi başlatılamadı: {e}")
 
 try:
-    def handle(client, nickname, ip):
-        while True:
-            try:
-                msg = client.recv(1024).decode('utf-8').strip()
-                if not msg:
-                    continue
+   def handle(client, nickname, ip):
+    while True:
+        try:
+            msg = client.recv(1024).decode('utf-8').strip()
+            if not msg:
+                break
 
-                if msg.startswith("/"):
-                    parts = msg.split(" ", 2)
-                    cmd = parts[0].lower()
+            if msg.startswith("/"):
+                parts = msg.split(" ", 2)
+                cmd = parts[0].lower()
 
-                    if cmd == "/list":
+                if cmd == "/list":
+                    with lock:
                         user_list = ", ".join(nicknames)
-                        client.send(f"Bağlı kullanıcılar: {user_list}\n".encode('utf-8'))
+                    client.send(f"Bağlı kullanıcılar: {user_list}\n".encode('utf-8'))
 
-                    elif cmd == "/v":
-                        client.send(f"Sunucu sürümü: {VERSION}\n".encode('utf-8'))
-  
+                elif cmd == "/v":
+                    client.send(f"Sunucu sürümü: {VERSION}\n".encode('utf-8'))
 
-                    elif cmd == "/pm" and len(parts) == 3:
-                        target_name = parts[1]
-                        private_msg = parts[2]
+                elif cmd == "/pm" and len(parts) == 3:
+                    target_name = parts[1]
+                    private_msg = parts[2]
+
+                    with lock:
                         if target_name in nicknames:
                             target_index = nicknames.index(target_name)
                             target_client = clients[target_index]
+                        else:
+                            target_client = None
+
+                    if target_client:
+                        try:
                             target_client.send(f"[Özel] {nickname}: {private_msg}".encode('utf-8'))
                             client.send(f"[Özel] {nickname} -> {target_name}: {private_msg}".encode('utf-8'))
-                        else:
-                            client.send(f"Kullanıcı {target_name} bulunamadı.\n".encode('utf-8'))
-
+                        except (ConnectionResetError, OSError):
+                            client.send(f"Kullanıcı {target_name} şu anda bağlantıda değil.\n".encode('utf-8'))
                     else:
-                        client.send("Bilinmeyen komut veya yetkisiz.\n".encode('utf-8'))
-            
+                        client.send(f"Kullanıcı {target_name} bulunamadı.\n".encode('utf-8'))
+
                 else:
-                    full_message = f"{nickname}: {msg}"
-                    print(full_message)
-                    broadcast(full_message, client)
+                    client.send("Bilinmeyen komut veya yetkisiz.\n".encode('utf-8'))
 
-            except:
-                break
+            else:
+                full_message = f"{nickname}: {msg}"
+                print(full_message)
+                broadcast(full_message, client)
 
+        except Exception as e:
+            print(f"{nickname} bağlantısı beklenmedik şekilde kesildi: {e}")
+            break
+
+    with lock:
         if client in clients:
             index = clients.index(client)
-            clients.remove(client)
-            client.close()
-            nicknames.remove(nickname)
-            client_ips.remove(ip)
-            broadcast(f"{nickname} ayrıldı!\n", None)
-            print(f"{nickname} ayrıldı.")
+            clients.pop(index)
+            nicknames.pop(index)
+            client_ips.pop(index)
+
+    try:
+        client.close()
+    except:
+        pass
+    broadcast(f"{nickname} ayrıldı!\n", None)
+    print(f"{nickname} ayrıldı.")
     print("Handle sistemi aktif!")
 except Exception as e:
     print(f"Handle sistemi başlatılamadı: {e}")
@@ -110,8 +133,8 @@ try:
         while True:
             try:
                 client, address = server.accept()
-            except OSError:
-                print(f"Sunucu dinleme kapandı: {OSError}")
+            except (OSError, ConnectionResetError) as e:
+                print(f"Sunucu kabul sırasında bağlantı hatası: {e}")
                 break
 
             ip = address[0]
@@ -144,9 +167,10 @@ try:
                 client.close()
                 continue
 
-            clients.append(client)
-            nicknames.append(nickname)
-            client_ips.append(ip)
+            with lock:
+                clients.append(client)
+                nicknames.append(nickname)
+                client_ips.append(ip)
 
             print(f"{ip} bağlandı. Takma ad: {nickname}")
             broadcast(f"{nickname} sohbete katıldı!\n", client)
@@ -181,11 +205,12 @@ def server_commands():
 
         if command == "/shutdown":
             broadcast("Sunucu kapatılıyor...\n")
-            for c in clients:
-             try:
-                 c.close()
-             except:
-                 pass
+            with lock:
+                for c in clients:
+                    try:
+                        c.close()
+                    except:
+                        pass
             try:
                  server.close()
             except:
@@ -211,8 +236,9 @@ def server_commands():
             if ban_name in nicknames:
                 idx = nicknames.index(ban_name)
                 ip = client_ips[idx]
-                banned_ips.add(ip)
-                save_banned_ips()
+                with lock:
+                    banned_ips.add(ip)
+                    save_banned_ips()
                 clients[idx].send("Banlandınız!\n".encode('utf-8'))
                 clients[idx].close()
                 broadcast(f"{ban_name} yasaklandı!\n")
@@ -223,8 +249,9 @@ def server_commands():
         elif command == "/unban" and len(parts) >= 2:
             ip = parts[1]
             if ip in banned_ips:
-                banned_ips.remove(ip)
-                save_banned_ips()
+                with lock:
+                    banned_ips.remove(ip)
+                    save_banned_ips()
                 print(f"{ip} ban kaldırıldı.")
                 broadcast(f"{ip} banı kaldırıldı!\n")
             else:
@@ -236,10 +263,12 @@ def server_commands():
             print(f"[Sunucu]: {message}")
 
         elif command == "/list":
+            with lock:
+                user_list = ", ".join(nicknames)
             print(f"Bağlı kullanıcılar: {', '.join(nicknames)}")
 
         elif cmd == "/v":
-            print(f"Sunucu sürümü: {VERSION}\n".encode('utf-8'))            
+            print(f"Sunucu sürümü: {VERSION}")      
 
 try:
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
