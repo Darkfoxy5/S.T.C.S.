@@ -238,6 +238,9 @@ def server_commands():
         elif command == "/list":
             print(f"Bağlı kullanıcılar: {', '.join(nicknames)}")
 
+        elif cmd == "/v":
+            print(f"Sunucu sürümü: {VERSION}\n".encode('utf-8'))            
+
 try:
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
