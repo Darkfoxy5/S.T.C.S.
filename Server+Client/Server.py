@@ -65,7 +65,8 @@ try:
                         client.send(f"Bağlı kullanıcılar: {user_list}\n".encode('utf-8'))
 
                     elif cmd == "/v":
-                        client.send(f"Sunucu sürümü: {VERSION}")  
+                        client.send(f"Sunucu sürümü: {VERSION}\n".encode('utf-8'))
+  
 
                     elif cmd == "/pm" and len(parts) == 3:
                         target_name = parts[1]
