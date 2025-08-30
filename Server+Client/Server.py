@@ -1,19 +1,18 @@
 import socket
 import threading
-from datetime import datetime
 import os
 
+VERSION = "v0.1.0-Alpha"
 HOST = '0.0.0.0'
 PORT = 5555
 
 # Sunucu şifresi sunucuya girilirken sorulur.
-SERVER_PASSWORD = "Şifreyi buraya yaz" 
+SERVER_PASSWORD = "Şifreyi buraya yaz"
 
 clients = []
 nicknames = []
 client_ips = []
 banned_ips = set()
-LOG_FILE = "log.txt"
 BANNED_FILE = "banned_ips.txt"
 
 # Banlı IP'leri yükle
@@ -23,17 +22,8 @@ try:
             for line in f:
                 banned_ips.add(line.strip())
     print("Ban sistemi aktif!")
-except:
-    print("Ban sistemi başlatılamadı!")
-
-# Log kaydı
-try:
-    def log_message(message):
-        with open(LOG_FILE, "a", encoding="utf-8") as f:
-            f.write(message + "\n")
-    print("Log sistemi aktif!")
-except:
-    print("Log sistemi başlatılamadı!")
+except Exception as e:
+    print(f"Ban sistemi başlatılamadı: {e}")
 
 #Ban IP kayıtları
 try:
@@ -42,8 +32,8 @@ try:
             for ip in banned_ips:
                 f.write(ip + "\n")
     print("Ban kaydetme sistemi aktif!")
-except:
-    print("Ban kaydetme sistemi başlatılamadı!")
+except Exception as e:
+    print(f"Ban kaydetme sistemi başlatılamadı: {e}")
 
 # Broadcast sistemi
 try:
@@ -55,8 +45,8 @@ try:
                 except:
                     pass
     print("Broadcast sistemi aktif!")
-except:
-    print("Broadcast sistemi başlatılamadı!")
+except Exception as e:
+    print(f"Broadcast sistemi başlatılamadı: {e}")
 
 try:
     def handle(client, nickname, ip):
@@ -74,6 +64,9 @@ try:
                         user_list = ", ".join(nicknames)
                         client.send(f"Bağlı kullanıcılar: {user_list}\n".encode('utf-8'))
 
+                    elif cmd == "/v":
+                        client.send(f"Sunucu sürümü: {VERSION}")  
+
                     elif cmd == "/pm" and len(parts) == 3:
                         target_name = parts[1]
                         private_msg = parts[2]
@@ -89,10 +82,8 @@ try:
                         client.send("Bilinmeyen komut veya yetkisiz.\n".encode('utf-8'))
             
                 else:
-                    timestamp = datetime.now().strftime("%H:%M")
-                    full_message = f"[{timestamp}] {nickname}: {msg}"
+                    full_message = f"{nickname}: {msg}"
                     print(full_message)
-                    log_message(full_message)
                     broadcast(full_message, client)
 
             except:
@@ -107,59 +98,66 @@ try:
             broadcast(f"{nickname} ayrıldı!\n", None)
             print(f"{nickname} ayrıldı.")
     print("Handle sistemi aktif!")
-except:
-    print("Handle sistemi başlatılamadı!")
+except Exception as e:
+    print(f"Handle sistemi başlatılamadı: {e}")
 
 #Giriş denetimi
 try:
     def receive():
-     server.listen()
-     print(f"Sunucu {HOST}:{PORT} adresinde çalışıyor...")
-     while True:
-         client, address = server.accept()
-         ip = address[0]
+        server.listen()
+        print(f"Sunucu {HOST}:{PORT} adresinde çalışıyor...")
+        while True:
+            try:
+                client, address = server.accept()
+            except OSError:
+                print(f"Sunucu dinleme kapandı: {OSError}")
+                break
 
-         if ip in banned_ips:
-             client.send("Bu IP yasaklı!\n".encode('utf-8'))
-             client.close()
-             continue
+            ip = address[0]
 
-         if ip in client_ips:
-             client.send("Bu IP zaten bağlı! Birden fazla oturum açamazsınız.\n".encode('utf-8'))
-             client.close()
-             continue
+            if ip in banned_ips:
+                client.send("Bu IP yasaklı!\n".encode('utf-8'))
+                client.close()
+                continue
 
-         # Şifre kontrolü
-         password = client.recv(1024).decode('utf-8').strip()
-         if password != SERVER_PASSWORD:
-             client.send("Hatalı şifre!\n".encode('utf-8'))
-             client.close()
-             continue
+            if ip in client_ips:
+                client.send("Bu IP zaten bağlı! Birden fazla oturum açamazsınız.\n".encode('utf-8'))
+                client.close()
+                continue
 
-         # Ad sorulması  
-         client.send("Lütfen adınızı girin: ".encode('utf-8'))
-         nickname = client.recv(1024).decode('utf-8').strip()
-         if not nickname:
-             nickname = "Anonim"
+            # Şifre kontrolü
+            password = client.recv(1024).decode('utf-8').strip()
+            if password != SERVER_PASSWORD:
+                client.send("Hatalı şifre!\n".encode('utf-8'))
+                client.close()
+                continue
 
-         if nickname in nicknames:
-             client.send("Bu takma ad zaten kullanılıyor.\n".encode('utf-8'))
-             client.close()
-             continue
+            # Ad sorulması  
+            client.send("Lütfen adınızı girin: ".encode('utf-8'))
+            nickname = client.recv(1024).decode('utf-8').strip()
+            if not nickname:
+                nickname = "Anonim"
 
-         clients.append(client)
-         nicknames.append(nickname)
-         client_ips.append(ip)
+            if nickname in nicknames:
+                client.send("Bu takma ad zaten kullanılıyor.\n".encode('utf-8'))
+                client.close()
+                continue
 
-         print(f"{ip} bağlandı. Takma ad: {nickname}")
-         broadcast(f"{nickname} sohbete katıldı!\n", client)
-         client.send("Sohbete hoş geldin!\n".encode('utf-8'))
+            clients.append(client)
+            nicknames.append(nickname)
+            client_ips.append(ip)
 
-         thread = threading.Thread(target=handle, args=(client, nickname, ip))
-         thread.start()
+            print(f"{ip} bağlandı. Takma ad: {nickname}")
+            broadcast(f"{nickname} sohbete katıldı!\n", client)
+            client.send("Sohbete hoş geldin!\n".encode('utf-8'))
+            client.send(f"Sunucu sürümü: {VERSION}\n".encode('utf-8'))
+
+            thread = threading.Thread(target=handle, args=(client, nickname, ip), daemon=True)
+            thread.start()
     print("Giriş Denetim Sistemi başlatıldı!")   
-except:
-    print("Giriş Denetim Sisteni başlatılamadı!")           
+except Exception as e:
+    print(f"Giriş Denetim Sisteni başlatılamadı: {e}")           
+
 #Sunucuya özel  komutlar
 def server_commands():
     while True:
@@ -183,10 +181,16 @@ def server_commands():
         if command == "/shutdown":
             broadcast("Sunucu kapatılıyor...\n")
             for c in clients:
-                c.close()
-            server.close()
+             try:
+                 c.close()
+             except:
+                 pass
+            try:
+                 server.close()
+            except:
+                pass
             print("Sunucu kapatıldı.")
-            exit()
+            import os; os._exit(0)
 
         elif command == "/kick" and len(parts) >= 2:
             kick_name = parts[1]
@@ -200,6 +204,9 @@ def server_commands():
                 print(f"{kick_name} atıldı.")
             else:
                 print(f"Kullanıcı {kick_name} bulunamadı.")
+
+        elif command == "/v":
+            print(f"Sunucu sürümü: {VERSION}")  
 
         elif command == "/ban" and len(parts) >= 2:
             ban_name = parts[1]
@@ -235,19 +242,20 @@ def server_commands():
 
 try:
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server.bind((HOST, PORT))
     print("Sunucu soketi aktif!")
-except:
-    print("Sunucu soketi başlatılamadı!")
+except Exception as e:
+    print(f"Sunucu soketi başlatılamadı: {e}")
 
 try:
     threading.Thread(target=server_commands, daemon=True).start()
     print("Sunucu komut sistemi aktif!")
-except:
-    print("Sunucu komut sistemi başlatılamadı!")
+except Exception as e:
+    print(f"Komut sistemi başlatılamadı: {e}")
 
 try:
     print("Bağlantı dinleme başlatılıyor...")
     receive()
-except:
-    print("Bağlantı dinleme başlatılamadı!")
+except Exception as e:
+    print(f"Bağlantı dinleme başlatılamadı: {e}")
