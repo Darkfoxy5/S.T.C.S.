@@ -205,9 +205,6 @@ def server_commands():
             else:
                 print(f"Kullanıcı {kick_name} bulunamadı.")
 
-        elif command == "/v":
-            print(f"Sunucu sürümü: {VERSION}")  
-
         elif command == "/ban" and len(parts) >= 2:
             ban_name = parts[1]
             if ban_name in nicknames:
