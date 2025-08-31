@@ -35,7 +35,7 @@ If you want to contribute, follow these steps:
 
 ## ⚠️ Disclaimer / Warning
 
-❗ If you see this message, our project is in **"Pre-Alpha"** version.
+❗ If you see this message, our project is in **"Alpha"** version.
 
 S.T.C.S. is provided **“as is”**. Any responsibility arising from its use lies with the user.
 
