@@ -2,12 +2,14 @@ import socket
 import threading
 import os
 
-VERSION = "v0.1.0-Alpha"
+VERSION = "S.T.C.S. v0.1.0-Alpha , Github: https://github.com/Darkfoxy5/S.T.C.S. "
 HOST = '0.0.0.0'
 PORT = 5555
 
 # Sunucu şifresi sunucuya girilirken sorulur.
 SERVER_PASSWORD = "Şifreyi buraya yaz"
+#Sunucu Kuralları kulanıcı ilk kez girdiğinde gösterilir.
+RULES = "Kuralları buraya yaz"
 
 clients = []
 nicknames = []
@@ -50,7 +52,7 @@ try:
                             clients.pop(idx)
                             nicknames.pop(idx)
                             client_ips.pop(idx)
-                            print(f"{removed_nick} bağlantısı broadcast sırasında kesildi")
+                            print(f"{removed_nick} bağlantısı broadcast sırasında kesildi: {e}")
 
     print("Broadcast sistemi aktif!")
 except Exception as e:
@@ -159,6 +161,7 @@ try:
             # Ad sorulması  
             client.send("Lütfen adınızı girin: ".encode('utf-8'))
             nickname = client.recv(1024).decode('utf-8').strip()
+            nickname = "_".join(nickname.split())
             if not nickname:
                 nickname = "Anonim"
 
@@ -176,6 +179,7 @@ try:
             broadcast(f"{nickname} sohbete katıldı!\n", client)
             client.send("Sohbete hoş geldin!\n".encode('utf-8'))
             client.send(f"Sunucu sürümü: {VERSION}\n".encode('utf-8'))
+            client.send(f"Kurallar/Rules: {RULES}\n".encode('utf-8'))
 
             thread = threading.Thread(target=handle, args=(client, nickname, ip), daemon=True)
             thread.start()
@@ -192,8 +196,9 @@ def server_commands():
 
         if command == "/help":
             help_text = (
-                "Sunucu terminali için kullanılabilir komutlar:\n"
+                "Sunucu terminali için kullanılabilir komutlar:(31.08.2025)\n"
                 "/shutdown -> Sunucuyu kapatır\n"
+                "/v -> Bulunduğunuz sunucunun versiyonunu Gösterir\n"
                 "/kick <kullanıcı> -> Belirtilen kullanıcıyı atar\n"
                 "/ban <kullanıcı> -> Belirtilen kullanıcıyı IP ile banlar\n"
                 "/unban <IP> -> Banlı IP'nin banını kaldırır\n"
