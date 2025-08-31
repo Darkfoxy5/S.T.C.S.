@@ -32,7 +32,7 @@ Katkı yapmak isteyenler aşağıdaki adımları izleyebilir:
 
 ## ⚠️ Sorumluluk Reddi / Uyarı
 
-❗ Bu Metni Görüyorsanız Projemiz **"Pre-Alpha"** Sürümündedir.
+❗ Bu Metni Görüyorsanız Projemiz **"Alpha"** Sürümündedir.
 
 S.T.C.S. **“olduğu gibi”** sunulmaktadır. Kullanımından doğabilecek her türlü sorumluluk kullanıcıya aittir.
 
