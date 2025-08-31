@@ -16,8 +16,8 @@ Projeye dahil olan herkes, geliştirme süreçlerine katkıda bulunabilir ve den
 
 ## 🤝 READMES
 
-[🇬🇧ReadmeTR](https://github.com/Darkfoxy5/S.T.C.S./blob/2893443a5b5d669d2cba0312af38e4c967cace2c/READMES/READMETR.md)
-[🇹🇷ReadmeENG]https://github.com/Darkfoxy5/S.T.C.S./blob/2893443a5b5d669d2cba0312af38e4c967cace2c/READMES/READMEENG.md)
+🇬🇧[🇬🇧ReadmeTR](https://github.com/Darkfoxy5/S.T.C.S./blob/2893443a5b5d669d2cba0312af38e4c967cace2c/READMES/READMETR.md)
+🇹🇷[ReadmeENG]https://github.com/Darkfoxy5/S.T.C.S./blob/2893443a5b5d669d2cba0312af38e4c967cace2c/READMES/READMEENG.md)
 ---
 
 ## ⚠️ Sorumluluk Reddi / Uyarı
