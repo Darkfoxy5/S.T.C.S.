@@ -4,7 +4,7 @@
 
 **Felsefemiz:** S.T.C.S., kullanıcıların ve geliştiricilerin özgürce iletişim kurabileceği bir alan yaratmayı amaçlayan açık kaynaklı bir yazılımdır.
 
-**🇬🇧Our Philosophy**: S.T.C.S. is an open-source software aiming to create a space where users and developers can communicate freely.
+**Our Philosophy**: S.T.C.S. is an open-source software aiming to create a space where users and developers can communicate freely.
 
 ---
 
