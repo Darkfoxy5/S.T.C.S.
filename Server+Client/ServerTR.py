@@ -128,7 +128,7 @@ def remove_client(client, nickname):
 def handle(client, nickname, ip):
     # saniye başı mesaj limiti
     time_window = 10
-    message_limit = 20
+    message_limit = 12
 
     while True:
         try:
@@ -494,3 +494,4 @@ except KeyboardInterrupt:
     os._exit(0)
 except Exception as e:
     print(f"Bağlantı dinleme başlatılamadı: {e}")
+
