@@ -5,6 +5,7 @@ import time
 from queue import Queue, Full
 
 broadcast_queue = Queue(maxsize=2000)
+muted_users = {}
 
 VERSION = "S.T.C.S. v0.1.1-Alpha(Test) , Github: https://github.com/Darkfoxy5/S.T.C.S. "
 HOST = '0.0.0.0'
@@ -135,6 +136,16 @@ def handle(client, nickname, ip):
             raw = client.recv(1024)
             if not raw:
                 break
+
+            if nickname in muted_users:
+                if time.time() < muted_users[nickname]:
+                    try:
+                        client.send("Sessize alındınız, mesaj gönderemezsiniz.\n".encode('utf-8'))
+                    except:
+                        pass
+                    continue
+                else:
+                    del muted_users[nickname]
 
             if len(raw) > 1024:
                 try:
@@ -409,6 +420,23 @@ def server_commands():
                 pass
             print("Sunucu kapatıldı.")
             import os; os._exit(0)
+        
+        elif command == "/mute" and len(parts) >= 3:
+            target_name = parts[1]
+            try:
+                duration_min = float(parts[2])
+            except ValueError:
+                print("Geçersiz süre.")
+                continue
+
+            with lock:
+                if target_name in nicknames:
+                    muted_users[target_name] = time.time() + duration_min*60
+                    print(f"{target_name} {duration_min} dakika sessize alındı.")
+                    broadcast(f"{target_name} {duration_min} dakika sessize alındı.\n")
+                else:
+                    print(f"Kullanıcı {target_name} bulunamadı.")
+
 
         elif command == "/kick" and len(parts) >= 2:
             kick_name = parts[1]
@@ -494,4 +522,3 @@ except KeyboardInterrupt:
     os._exit(0)
 except Exception as e:
     print(f"Bağlantı dinleme başlatılamadı: {e}")
-
