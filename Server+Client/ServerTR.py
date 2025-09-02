@@ -437,6 +437,15 @@ def server_commands():
                 else:
                     print(f"Kullanıcı {target_name} bulunamadı.")
 
+        elif command == "/unmute" and len(parts) >= 2:
+            target_name = parts[1]
+            with lock:
+                if target_name in muted_users:
+                    del muted_users[target_name]
+                    print(f"{target_name} sessizden çıkarıldı.")
+                    broadcast(f"{target_name} artık konuşabilir!\n")
+                else:
+                    print(f"{target_name} sessizde değil.")
 
         elif command == "/kick" and len(parts) >= 2:
             kick_name = parts[1]
@@ -491,6 +500,11 @@ def server_commands():
             with lock:
                 user_list = ", ".join(nicknames)
             print(f"Bağlı kullanıcılar: {user_list}")
+
+        elif command == "/clear":
+            broadcast("[Sunucu/Server]:CLEAR\n", None)
+            print("Sohbet temizleme komutu gönderildi.")
+
 
         elif command == "/v":
             print(f"Sunucu sürümü: {VERSION}")
