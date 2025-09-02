@@ -2,10 +2,11 @@ import socket
 import threading
 import os
 import time
-from queue import Queue, Full
+from queue import Queue, Full, Empty
 
 broadcast_queue = Queue(maxsize=2000)
 muted_users = {}
+running = True  
 
 VERSION = "S.T.C.S. v0.1.1-Alpha(Test) , Github: https://github.com/Darkfoxy5/S.T.C.S. "
 HOST = '0.0.0.0'
@@ -47,15 +48,18 @@ except Exception as e:
 # Broadcast sistemi
 try:
     def broadcast_worker():
-        while True:
-            message, sender = broadcast_queue.get()
+        while running:
+            try:
+                message, sender = broadcast_queue.get(timeout=1)
+            except Empty:
+                continue
             disconnected_clients = []
             with lock:
                 for c in clients[:]:
                     if c != sender:
                         try:
                             c.send(message.encode('utf-8'))
-                        except (socket.error, ConnectionResetError, OSError) as e:
+                        except (socket.error, ConnectionResetError, OSError):
                             try:
                                 idx = clients.index(c)
                                 disconnected_clients.append(idx)
@@ -131,21 +135,24 @@ def handle(client, nickname, ip):
     time_window = 10
     message_limit = 12
 
-    while True:
+    while running:
         try:
             raw = client.recv(1024)
             if not raw:
                 break
 
-            if nickname in muted_users:
-                if time.time() < muted_users[nickname]:
+            with lock:
+                expiry = muted_users.get(nickname)
+            if expiry:
+                if time.time() < expiry:
                     try:
                         client.send("Sessize alındınız, mesaj gönderemezsiniz.\n".encode('utf-8'))
                     except:
                         pass
                     continue
                 else:
-                    del muted_users[nickname]
+                    with lock:
+                        muted_users.pop(nickname, None)
 
             if len(raw) > 1024:
                 try:
@@ -158,17 +165,18 @@ def handle(client, nickname, ip):
             if not msg:
                 break
 
-            # Spam kontrolü
             current_time = time.time()
-            last_time, count = message_counts.get(nickname, (current_time, 0))
-            if current_time - last_time <= time_window:
-                count += 1
-            else:
-                count = 1
-                last_time = current_time
-            message_counts[nickname] = (last_time, count)
+            with lock:
+                last_time, count = message_counts.get(nickname, (current_time, 0))
+                if current_time - last_time <= time_window:
+                    count += 1
+                else:
+                    count = 1
+                    last_time = current_time
+                message_counts[nickname] = (last_time, count)
+                over_limit = (count > message_limit)
 
-            if count > message_limit:
+            if over_limit:
                 try:
                     client.send("Flood tespit edildi, bağlantınız kesiliyor!\n".encode('utf-8'))
                 except:
@@ -254,12 +262,11 @@ def handle(client, nickname, ip):
 def receive():
     server.listen(100)
     print(f"Sunucu {HOST}:{PORT} adresinde çalışıyor...")
-    while True:
+    while running:
         try:
             client, address = server.accept()
             client.settimeout(900)
         except socket.timeout:
-            print("Bir istemci zaman aşımı nedeniyle düşürüldü.")
             continue
         except (socket.error, OSError, ConnectionResetError) as e:
             print(f"Sunucu kabul sırasında bağlantı hatası: {e}")
@@ -387,6 +394,7 @@ def receive():
         thread.start()
 
 def server_commands():
+    global running
     while True:
         cmd = input()
         parts = cmd.split(" ", 2)
@@ -394,19 +402,23 @@ def server_commands():
 
         if command == "/help":
             help_text = (
-                "Sunucu terminali için kullanılabilir komutlar:(31.08.2025)\n"
+                "Sunucu terminali için kullanılabilir komutlar:(2.09.2025)\n"
                 "/shutdown -> Sunucuyu kapatır\n"
                 "/v -> Bulunduğunuz sunucunun versiyonunu Gösterir\n"
+                "/mute <kullanıcı adı> <dakkika> -> kulanıcıyı belli bir süre susturur\n" 
+                "/unmute <kullanıcı adı> -> Kulanıcının susturmasını kaldırır\n"
                 "/kick <kullanıcı> -> Belirtilen kullanıcıyı atar\n"
                 "/ban <kullanıcı> -> Belirtilen kullanıcıyı IP ile banlar\n"
                 "/unban <IP> -> Banlı IP'nin banını kaldırır\n"
                 "/say <mesaj> -> Sunucu olarak sohbet penceresine mesaj gönderir\n"
                 "/list -> Bağlı kullanıcıları listeler\n"
+                "/clear -> Bütün kulanıcıların sohbetini temizler\n"
             )
             print(help_text)
             continue
 
         if command == "/shutdown":
+            running = False
             broadcast("Sunucu kapatılıyor...\n")
             with lock:
                 for c in clients:
@@ -518,6 +530,10 @@ try:
         server.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
     except:
         pass
+    try:
+        server.settimeout(1.0)
+    except:
+        pass
     print("Sunucu soketi aktif!")
 except Exception as e:
     print(f"Sunucu soketi başlatılamadı: {e}")
@@ -533,6 +549,7 @@ try:
     receive()
 except KeyboardInterrupt:
     print("\nSunucu manuel olarak kapatılıyor...")
+    running = False
     os._exit(0)
 except Exception as e:
     print(f"Bağlantı dinleme başlatılamadı: {e}")
