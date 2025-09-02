@@ -402,7 +402,7 @@ def server_commands():
 
         if command == "/help":
             help_text = (
-                "Sunucu terminali için kullanılabilir komutlar:(2.09.2025)\n"
+                "Sunucu terminali için kullanılabilir komutlar:(02.09.2025)\n"
                 "/shutdown -> Sunucuyu kapatır\n"
                 "/v -> Bulunduğunuz sunucunun versiyonunu Gösterir\n"
                 "/mute <kullanıcı adı> <dakkika> -> kulanıcıyı belli bir süre susturur\n" 
@@ -553,3 +553,4 @@ except KeyboardInterrupt:
     os._exit(0)
 except Exception as e:
     print(f"Bağlantı dinleme başlatılamadı: {e}")
+
