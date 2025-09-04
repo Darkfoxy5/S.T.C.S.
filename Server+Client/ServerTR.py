@@ -247,7 +247,7 @@ def handle(client, nickname, ip):
 
         except socket.timeout:
             try:
-                client.send("15 dakika boyunca işlem yapmadığınız için bağlantınız kesildi.\n".encode('utf-8'))
+                client.send("5 dakika boyunca işlem yapmadığınız için bağlantınız kesildi.\n".encode('utf-8'))
             except:
                 pass
             remove_client(client, nickname)
@@ -259,13 +259,18 @@ def handle(client, nickname, ip):
             remove_client(client, nickname)
             break
 
+# DDoS önlemleri
+MAX_CONNECTIONS_PER_IP = 3
+MIN_CONNECTION_INTERVAL = 2  # saniye
+last_connection_time = {}
+
 def receive():
     server.listen(100)
     print(f"Sunucu {HOST}:{PORT} adresinde çalışıyor...")
     while running:
         try:
             client, address = server.accept()
-            client.settimeout(900)
+            client.settimeout(300)  # timeout süresi 5 dk
         except socket.timeout:
             continue
         except (socket.error, OSError, ConnectionResetError) as e:
@@ -273,6 +278,24 @@ def receive():
             continue
 
         ip = address[0]
+        now = time.time()
+
+        if ip in last_connection_time and now - last_connection_time[ip] < MIN_CONNECTION_INTERVAL:
+            try:
+                client.send("Çok hızlı bağlanıyorsunuz! Lütfen bekleyin.\n".encode('utf-8'))
+            except:
+                pass
+            client.close()
+            continue
+        last_connection_time[ip] = now
+
+        if client_ips.count(ip) >= MAX_CONNECTIONS_PER_IP:
+            try:
+                client.send(f"Bu IP zaten {MAX_CONNECTIONS_PER_IP} oturumdan fazla bağlı! Bekleyin.\n".encode('utf-8'))
+            except:
+                pass
+            client.close()
+            continue
 
         # Ban kontrolü
         if ip in banned_ips:
@@ -392,7 +415,6 @@ def receive():
 
         thread = threading.Thread(target=handle, args=(client, nickname, ip), daemon=True)
         thread.start()
-
 def server_commands():
     global running
     while True:
@@ -553,4 +575,3 @@ except KeyboardInterrupt:
     os._exit(0)
 except Exception as e:
     print(f"Bağlantı dinleme başlatılamadı: {e}")
-
