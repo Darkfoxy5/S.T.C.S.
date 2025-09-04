@@ -1,15 +1,19 @@
 import socket
 import threading
 import os
+import time
+from queue import Queue, Full, Empty
 
-VERSION = "S.T.C.S. v0.1.0-Alpha , Github: https://github.com/Darkfoxy5/S.T.C.S. "
+broadcast_queue = Queue(maxsize=2000)
+muted_users = {}
+running = True  
+
+VERSION = "S.T.C.S. v0.1.1-Alpha(Test) , Github: https://github.com/Darkfoxy5/S.T.C.S. "
 HOST = '0.0.0.0'
 PORT = 5555
 
-# The server password is requested when logging into the server.
-SERVER_PASSWORD = "Enter the password here"
-#Server Rules are displayed when a user logs in for the first time.
-RULES = "Write the Server Rules here"
+SERVER_PASSWORD = "12345"  # Put the password here, "12345" is the default public server password.
+RULES = "Write the rules here"
 
 clients = []
 nicknames = []
@@ -18,54 +22,169 @@ banned_ips = set()
 lock = threading.Lock()
 BANNED_FILE = "banned_ips.txt"
 
-# Load Banned IP's
+# Spam control
+message_counts = {}
+
+# Load banned IPs
 try:
     if os.path.exists(BANNED_FILE):
         with open(BANNED_FILE, "r") as f:
             for line in f:
                 banned_ips.add(line.strip())
-    print("The ban system is active!")
+    print("Ban system active!")
 except Exception as e:
-    print(f"The ban system failed to start: {e}")
+    print(f"Ban system failed to start: {e}")
 
-#Ban IP logs
+# Ban IP saving
 try:
     def save_banned_ips():
         with open(BANNED_FILE, "w") as f:
             for ip in banned_ips:
                 f.write(ip + "\n")
-    print("Ban logging system active!")
+    print("Ban saving system active!")
 except Exception as e:
-    print(f"Ban logging system failed to start: {e}")
+    print(f"Ban saving system failed to start: {e}")
 
-# The broadcast system
+# Broadcast system
 try:
-    def broadcast(message, sender=None):
-        with lock:
-            for c in clients[:]:
-                if c != sender:
+    def broadcast_worker():
+        while running:
+            try:
+                message, sender = broadcast_queue.get(timeout=1)
+            except Empty:
+                continue
+            disconnected_clients = []
+            with lock:
+                for c in clients[:]:
+                    if c != sender:
+                        try:
+                            c.send(message.encode('utf-8'))
+                        except (socket.error, ConnectionResetError, OSError):
+                            try:
+                                idx = clients.index(c)
+                                disconnected_clients.append(idx)
+                                try:
+                                    c.close()
+                                except:
+                                    pass
+                            except ValueError:
+                                continue
+
+                for idx in sorted(disconnected_clients, reverse=True):
                     try:
-                        c.send(message.encode('utf-8'))
-                    except (ConnectionResetError, OSError) as e:
-                            idx = clients.index(c)
-                            removed_nick = nicknames[idx]
-                            clients.pop(idx)
-                            nicknames.pop(idx)
-                            client_ips.pop(idx)
-                            print(f"{removed_nick} connection lost during broadcast: {e}")
+                        removed_nick = nicknames.pop(idx)
+                    except IndexError:
+                        removed_nick = None
+                    try:
+                        clients.pop(idx)
+                    except IndexError:
+                        pass
+                    try:
+                        client_ips.pop(idx)
+                    except IndexError:
+                        pass
+                    if removed_nick:
+                        message_counts.pop(removed_nick, None)
+                        print(f"{removed_nick} removed from list during broadcast.")
+            broadcast_queue.task_done()
 
-    print("The broadcast system is active!")
-except Exception as e:
-    print(f"The broadcast system failed to start: {e}")
-
-try:
-   def handle(client, nickname, ip):
-    while True:
+    def broadcast(message, sender=None):
         try:
-            msg = client.recv(1024).decode('utf-8').strip()
+            broadcast_queue.put_nowait((message, sender))
+        except Full:
+            pass
+
+    threading.Thread(target=broadcast_worker, daemon=True).start()
+    print("Broadcast system active!")
+except Exception as e:
+    print(f"Broadcast system failed to start: {e}")
+
+# Client removal
+def remove_client(client, nickname):
+    with lock:
+        if client in clients:
+            try:
+                idx = clients.index(client)
+            except ValueError:
+                idx = None
+            if idx is not None:
+                try:
+                    clients.pop(idx)
+                except:
+                    pass
+                try:
+                    nicknames.pop(idx)
+                except:
+                    pass
+                try:
+                    client_ips.pop(idx)
+                except:
+                    pass
+        message_counts.pop(nickname, None)
+
+    try:
+        client.close()
+    except:
+        pass
+
+    broadcast(f"{nickname} left!\n", None)
+    print(f"{nickname} left.")
+
+def handle(client, nickname, ip):
+    # messages per time window
+    time_window = 10
+    message_limit = 12
+
+    while running:
+        try:
+            raw = client.recv(1024)
+            if not raw:
+                break
+
+            with lock:
+                expiry = muted_users.get(nickname)
+            if expiry:
+                if time.time() < expiry:
+                    try:
+                        client.send("You are muted, cannot send messages.\n".encode('utf-8'))
+                    except:
+                        pass
+                    continue
+                else:
+                    with lock:
+                        muted_users.pop(nickname, None)
+
+            if len(raw) > 1024:
+                try:
+                    client.send("Message too long!\n".encode('utf-8'))
+                except:
+                    pass
+                continue
+
+            msg = raw.decode('utf-8', errors='replace').strip()
             if not msg:
                 break
 
+            current_time = time.time()
+            with lock:
+                last_time, count = message_counts.get(nickname, (current_time, 0))
+                if current_time - last_time <= time_window:
+                    count += 1
+                else:
+                    count = 1
+                    last_time = current_time
+                message_counts[nickname] = (last_time, count)
+                over_limit = (count > message_limit)
+
+            if over_limit:
+                try:
+                    client.send("Flood detected, connection closing!\n".encode('utf-8'))
+                except:
+                    pass
+                remove_client(client, nickname)
+                break
+
+            # Commands
             if msg.startswith("/"):
                 parts = msg.split(" ", 2)
                 cmd = parts[0].lower()
@@ -73,120 +192,231 @@ try:
                 if cmd == "/list":
                     with lock:
                         user_list = ", ".join(nicknames)
-                    client.send(f"Connected users: {user_list}\n".encode('utf-8'))
+                    try:
+                        client.send(f"Connected users: {user_list}\n".encode('utf-8'))
+                    except:
+                        pass
 
                 elif cmd == "/v":
-                    client.send(f"Server version: {VERSION}\n".encode('utf-8'))
+                    try:
+                        client.send(f"Server version: {VERSION}\n".encode('utf-8'))
+                    except:
+                        pass
 
                 elif cmd == "/pm" and len(parts) == 3:
                     target_name = parts[1]
                     private_msg = parts[2]
-
                     with lock:
+                        target_client = None
                         if target_name in nicknames:
-                            target_index = nicknames.index(target_name)
-                            target_client = clients[target_index]
-                        else:
-                            target_client = None
+                            try:
+                                target_client = clients[nicknames.index(target_name)]
+                            except (ValueError, IndexError):
+                                target_client = None
 
                     if target_client:
                         try:
                             target_client.send(f"[Private] {nickname}: {private_msg}".encode('utf-8'))
                             client.send(f"[Private] {nickname} -> {target_name}: {private_msg}".encode('utf-8'))
-                        except (ConnectionResetError, OSError):
-                            client.send(f"User {target_name} is currently not online.\n".encode('utf-8'))
+                        except:
+                            try:
+                                client.send(f"User {target_name} not online.\n".encode('utf-8'))
+                            except:
+                                pass
                     else:
-                        client.send(f"User {target_name} not found.\n".encode('utf-8'))
+                        try:
+                            client.send(f"User {target_name} not found.\n".encode('utf-8'))
+                        except:
+                            pass
 
                 else:
-                    client.send("Unknown command or unauthorized user.\n".encode('utf-8'))
-
+                    try:
+                        client.send("Unknown or unauthorized command.\n".encode('utf-8'))
+                    except:
+                        pass
             else:
+                # message
                 full_message = f"{nickname}: {msg}"
                 print(full_message)
                 broadcast(full_message, client)
 
-        except Exception as e:
-            print(f"{nickname} , connection unexpectedly disconnected: {e}")
+        except (ConnectionResetError, OSError) as e:
+            print(f"{nickname} connection abruptly closed: {e}.")
+            remove_client(client, nickname)
             break
 
-    with lock:
-        if client in clients:
-            index = clients.index(client)
-            clients.pop(index)
-            nicknames.pop(index)
-            client_ips.pop(index)
-
-    try:
-        client.close()
-    except:
-        pass
-    broadcast(f"{nickname} left!\n", None)
-    print(f"{nickname} left.")
-    print("Handle system active!")
-except Exception as e:
-    print(f"The handle system failed to start: {e}")
-
-#Entry inspection
-try:
-    def receive():
-        server.listen()
-        print(f"The server is running at {HOST}:{PORT}...")
-        while True:
+        except socket.timeout:
             try:
-                client, address = server.accept()
-            except (OSError, ConnectionResetError) as e:
-                print(f"Connection error during server acceptance: {e}")
-                break
+                client.send("Connection closed due to 5 minutes of inactivity.\n".encode('utf-8'))
+            except:
+                pass
+            remove_client(client, nickname)
+            print(f"{nickname} disconnected due to timeout.")
+            break
 
-            ip = address[0]
+        except Exception as e:
+            print(f"{nickname} connection unexpectedly closed: {e}")
+            remove_client(client, nickname)
+            break
 
-            if ip in banned_ips:
+# DDoS prevention
+MAX_CONNECTIONS_PER_IP = 3
+MIN_CONNECTION_INTERVAL = 2  # seconds
+last_connection_time = {}
+
+def receive():
+    server.listen(100)
+    print(f"Server running on {HOST}:{PORT}...")
+    while running:
+        try:
+            client, address = server.accept()
+            client.settimeout(300)  # timeout 5 minutes
+        except socket.timeout:
+            continue
+        except (socket.error, OSError, ConnectionResetError) as e:
+            print(f"Connection error on accept: {e}")
+            continue
+
+        ip = address[0]
+        now = time.time()
+
+        # Minimum connection interval
+        if ip in last_connection_time and now - last_connection_time[ip] < MIN_CONNECTION_INTERVAL:
+            try:
+                client.send("Connecting too fast! Please wait.\n".encode('utf-8'))
+            except:
+                pass
+            client.close()
+            continue
+        last_connection_time[ip] = now
+
+        # Max simultaneous connections per IP
+        if client_ips.count(ip) >= MAX_CONNECTIONS_PER_IP:
+            try:
+                client.send(f"This IP already has {MAX_CONNECTIONS_PER_IP} sessions! Please wait.\n".encode('utf-8'))
+            except:
+                pass
+            client.close()
+            continue
+
+        # Ban check
+        if ip in banned_ips:
+            try:
                 client.send("This IP is banned!\n".encode('utf-8'))
+            except:
+                pass
+            try:
                 client.close()
-                continue
+            except:
+                pass
+            continue
 
-            if ip in client_ips:
-                client.send("This IP is already connected! You cannot open multiple account.\n".encode('utf-8'))
-                client.close()
-                continue
-
-            # Password check
-            password = client.recv(1024).decode('utf-8').strip()
-            if password != SERVER_PASSWORD:
-                client.send("Incorrect password!\n".encode('utf-8'))
-                client.close()
-                continue
-
-            # Request a nickname
-            client.send("Please enter your nickname: ".encode('utf-8'))
-            nickname = client.recv(1024).decode('utf-8').strip()
-            nickname = "_".join(nickname.split())
-            if not nickname:
-                nickname = "Anonim"
-
-            if nickname in nicknames:
-                client.send("This nickname is already in use.\n".encode('utf-8'))
-                client.close()
-                continue
-
+        if ip in client_ips:
+            try:
+                client.send("This IP is already connected! Cannot open multiple sessions.\n".encode('utf-8'))
+            except:
+                pass
             with lock:
-                clients.append(client)
-                nicknames.append(nickname)
-                client_ips.append(ip)
+                indices_to_remove = [i for i, x in enumerate(client_ips) if x == ip]
+                for idx in reversed(indices_to_remove):
+                    try:
+                        clients[idx].close()
+                    except:
+                        pass
+                    try:
+                        clients.pop(idx)
+                    except:
+                        pass
+                    try:
+                        nicknames.pop(idx)
+                    except:
+                        pass
+                    try:
+                        client_ips.pop(idx)
+                    except:
+                        pass
+            try:
+                client.close()
+            except:
+                pass
+            continue
 
-            print(f"{ip} connected. Nickname: {nickname}")
-            broadcast(f"{nickname} joined the chat!\n", client)
+        # Password check
+        try:
+            raw_pass = client.recv(1024)
+        except (ConnectionResetError, OSError):
+            try:
+                client.close()
+            except:
+                pass
+            continue
+        if not raw_pass:
+            try:
+                client.close()
+            except:
+                pass
+            continue
+        password = raw_pass.decode('utf-8', errors='replace').strip()
+        if password != SERVER_PASSWORD:
+            try:
+                client.send("Wrong password!\n".encode('utf-8'))
+            except:
+                pass
+            try:
+                client.close()
+            except:
+                pass
+            continue
+
+        # Ask for nickname
+        try:
+            client.send("Please enter your name: ".encode('utf-8'))
+            raw_nick = client.recv(1024)
+        except (ConnectionResetError, OSError):
+            try:
+                client.close()
+            except:
+                pass
+            continue
+        if not raw_nick:
+            try:
+                client.close()
+            except:
+                pass
+            continue
+        nickname = raw_nick.decode('utf-8', errors='replace').strip()
+        nickname = "_".join(nickname.split())
+        if not nickname:
+            nickname = "Anonymous"
+
+        if nickname in nicknames:
+            try:
+                client.send("This nickname is already taken.\n".encode('utf-8'))
+            except:
+                pass
+            try:
+                client.close()
+            except:
+                pass
+            continue
+
+        with lock:
+            clients.append(client)
+            nicknames.append(nickname)
+            client_ips.append(ip)
+
+        print(f"{ip} connected. Nickname: {nickname}")
+        broadcast(f"{nickname} joined the chat!\n", client)
+        try:
             client.send("Welcome to the chat!\n".encode('utf-8'))
             client.send(f"Server version: {VERSION}\n".encode('utf-8'))
-            client.send(f"Kurallar/Rules: {RULES}\n".encode('utf-8'))
+            client.send(f"Rules: {RULES}\n".encode('utf-8'))
+        except:
+            remove_client(client, nickname)
+            continue
 
-            thread = threading.Thread(target=handle, args=(client, nickname, ip), daemon=True)
-            thread.start()
-    print("Access Control System has started.")   
-except Exception as e:
-    print(f"Access Control System failed to start: {e}")           
-
+        thread = threading.Thread(target=handle, args=(client, nickname, ip), daemon=True)
+        thread.start()
 #Administrator commands
 def server_commands():
     while True:
@@ -293,4 +523,5 @@ try:
     print("Connection listening is starting...")
     receive()
 except Exception as e:
+
     print(f"Connection listening could not be started: {e}")
