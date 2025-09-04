@@ -433,6 +433,7 @@ def server_commands():
                 "/ban <kullanıcı> -> Banned the selected user\n"
                 "/unban <IP> -> Un-Banned the selected user\n"
                 "/say <mesaj> -> Sends a message to the chat window as a server\n"
+                "/clear -> Clears all user's chat\n"
                 "/list -> Lists connected users\n"
             )
             print(help_text)
@@ -501,6 +502,10 @@ def server_commands():
             with lock:
                 user_list = ", ".join(nicknames)
             print(f"Connected users: {', '.join(nicknames)}")
+
+        elif command == "/clear":
+            broadcast("[Sunucu/Server]:CLEAR\n", None)
+            print("Chat cleanup command sent.")
 
         elif cmd == "/v":
             print(f"Server Version: {VERSION}")      
