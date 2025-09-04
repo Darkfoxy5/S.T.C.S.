@@ -3,6 +3,7 @@ import threading
 import getpass
 import sys
 import urllib.request
+import os
 
 URL = "https://raw.githubusercontent.com/Darkfoxy5/S.T.C.S./refs/heads/main/Public_Server_list"
 
@@ -31,9 +32,15 @@ client.send(password.encode('utf-8'))
 def receive():
     while True:
         try:
-            message = client.recv(1024).decode('utf-8')
+            message = client.recv(1024).decode('utf-8', errors='replace')
             if not message:
                 break
+
+            if message.strip() == "[Sunucu/Server]:CLEAR":
+                os.system('cls' if sys.platform == 'win32' else 'clear')
+                print("[Sistem/System]: Sohbet temizlendi/The chat has been deleted.")
+                continue
+
             print(message)
         except:
             print("Bağlantı kesildi/Connection lost!")
@@ -48,6 +55,7 @@ def write():
                 print("Kullanılabilir komutlar:(31.08.2025)")
                 print("/help -> Displays the English Help menu!")
                 print("/list -> Bağlı kullanıcıları gösterir")
+                print("/clear -> Sohbetini temizler")
                 print("/pm <kullanıcı> <mesaj> -> Özel mesaj gönderir")
                 print("/v -> Bulunduğunuz sunucunun versiyonunu Gösterir")
                 print("/quit -> Güvenli bir şekilde sunucudan çıkmanızı şağlar")
@@ -56,10 +64,15 @@ def write():
                 print("Available commands:(31.08.2025)")
                 print("/yardım -> Türkçe Yardım menüsünü gösterir!")
                 print("/list -> Shows connected users")
+                print("/clear -> Cleans your chat")
                 print("/pm <user> <message> -> Send a private message")
                 print("/v -> Displays the server version")
                 print("/quit -> Ensures you exit the server safely")
                 print("/help -> Displays the help menu")
+            if message.strip() == "/clear":
+                os.system('cls' if sys.platform == 'win32' else 'clear')
+                print("[Sistem/System]: Sohbet temizlendi/The chat has been deleted.(lokal/local).")
+                continue
             if message == "/quit":
                 try:
                     client.shutdown(socket.SHUT_RDWR)
