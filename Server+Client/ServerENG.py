@@ -8,7 +8,7 @@ broadcast_queue = Queue(maxsize=2000)
 muted_users = {}
 running = True  
 
-VERSION = "S.T.C.S. v0.1.1-Alpha(Test) , Github: https://github.com/Darkfoxy5/S.T.C.S. "
+VERSION = "S.T.C.S. v0.1.1-Alpha , Github: https://github.com/Darkfoxy5/S.T.C.S. "
 HOST = '0.0.0.0'
 PORT = 5555
 
@@ -290,7 +290,6 @@ def receive():
             continue
         last_connection_time[ip] = now
 
-        # Max simultaneous connections per IP
         if client_ips.count(ip) >= MAX_CONNECTIONS_PER_IP:
             try:
                 client.send(f"This IP already has {MAX_CONNECTIONS_PER_IP} sessions! Please wait.\n".encode('utf-8'))
@@ -419,6 +418,7 @@ def receive():
         thread.start()
 #Administrator commands
 def server_commands():
+    global running
     while True:
         cmd = input()
         parts = cmd.split(" ", 2)
@@ -426,21 +426,24 @@ def server_commands():
 
         if command == "/help":
             help_text = (
-                "Commands available for the server terminal:(31.08.2025)\n"
-                "/shutdown -> Shuts down the server\n"
-                "/v -> Displays the version of the server you are on\n"
-                "/kick <kullanıcı> -> kick the selected user\n"
-                "/ban <kullanıcı> -> Banned the selected user\n"
-                "/unban <IP> -> Un-Banned the selected user\n"
-                "/say <mesaj> -> Sends a message to the chat window as a server\n"
-                "/clear -> Clears all user's chat\n"
-                "/list -> Lists connected users\n"
+                "Available commands for the server terminal (04.09.2025):\n"
+                "/shutdown -> Shut down the server\n"
+                "/v -> Show the server version\n"
+                "/mute <username> <minutes> -> Mute a user for a certain time\n" 
+                "/unmute <username> -> Unmute a user\n"
+                "/kick <username> -> Kick a user from the server\n"
+                "/ban <username> -> Ban a user by IP\n"
+                "/unban <IP> -> Unban an IP address\n"
+                "/say <message> -> Send a message to chat as the server\n"
+                "/list -> List connected users\n"
+                "/clear -> Clear chat for all users\n"
             )
             print(help_text)
             continue
 
         if command == "/shutdown":
-            broadcast("The server is shutting down...\n")
+            running = False
+            broadcast("Server is shutting down...\n")
             with lock:
                 for c in clients:
                     try:
@@ -448,24 +451,52 @@ def server_commands():
                     except:
                         pass
             try:
-                 server.close()
+                server.close()
             except:
                 pass
-            print("The server has been shut down.")
+            print("Server stopped.")
             import os; os._exit(0)
+        
+        elif command == "/mute" and len(parts) >= 3:
+            target_name = parts[1]
+            try:
+                duration_min = float(parts[2])
+            except ValueError:
+                print("Invalid duration.")
+                continue
+
+            with lock:
+                if target_name in nicknames:
+                    muted_users[target_name] = time.time() + duration_min*60
+                    print(f"{target_name} muted for {duration_min} minutes.")
+                    broadcast(f"{target_name} muted for {duration_min} minutes.\n")
+                else:
+                    print(f"User {target_name} not found.")
+
+        elif command == "/unmute" and len(parts) >= 2:
+            target_name = parts[1]
+            with lock:
+                if target_name in muted_users:
+                    del muted_users[target_name]
+                    print(f"{target_name} unmuted.")
+                    broadcast(f"{target_name} can now speak!\n")
+                else:
+                    print(f"{target_name} is not muted.")
 
         elif command == "/kick" and len(parts) >= 2:
             kick_name = parts[1]
             if kick_name in nicknames:
                 idx = nicknames.index(kick_name)
                 kicked_client = clients[idx]
-                ip = client_ips[idx]
-                kicked_client.send("You've been kicked from the server.\n".encode('utf-8'))
-                kicked_client.close()
+                try:
+                    kicked_client.send("You have been kicked from the server.\n".encode('utf-8'))
+                except:
+                    pass
+                remove_client(kicked_client, kick_name)
                 broadcast(f"{kick_name} was kicked from the server!\n")
-                print(f"{kick_name} was kick.")
+                print(f"{kick_name} kicked.")
             else:
-                print(f"User {kick_name} not be found.")
+                print(f"User {kick_name} not found.")
 
         elif command == "/ban" and len(parts) >= 2:
             ban_name = parts[1]
@@ -475,12 +506,15 @@ def server_commands():
                 with lock:
                     banned_ips.add(ip)
                     save_banned_ips()
-                clients[idx].send("You have been banned!\n".encode('utf-8'))
-                clients[idx].close()
+                try:
+                    clients[idx].send("You have been banned!\n".encode('utf-8'))
+                except:
+                    pass
+                remove_client(clients[idx], ban_name)
                 broadcast(f"{ban_name} was banned!\n")
                 print(f"{ban_name} banned (IP: {ip}).")
             else:
-                print(f"User {ban_name} not be found.")
+                print(f"User {ban_name} not found.")
 
         elif command == "/unban" and len(parts) >= 2:
             ip = parts[1]
@@ -488,10 +522,10 @@ def server_commands():
                 with lock:
                     banned_ips.remove(ip)
                     save_banned_ips()
-                print(f"{ip} The ban has been lifted.")
-                broadcast(f"{ip} ban has been lifted!\n")
+                print(f"{ip} unbanned.")
+                broadcast(f"{ip} ban removed!\n")
             else:
-                print(f"{ip} not banned.")
+                print(f"{ip} is not banned.")
 
         elif command == "/say" and len(parts) >= 2:
             message = " ".join(parts[1:])
@@ -501,14 +535,14 @@ def server_commands():
         elif command == "/list":
             with lock:
                 user_list = ", ".join(nicknames)
-            print(f"Connected users: {', '.join(nicknames)}")
+            print(f"Connected users: {user_list}")
 
         elif command == "/clear":
-            broadcast("[Sunucu/Server]:CLEAR\n", None)
-            print("Chat cleanup command sent.")
+            broadcast("[Server]:CLEAR\n", None)
+            print("Chat clear command sent.")
 
-        elif cmd == "/v":
-            print(f"Server Version: {VERSION}")      
+        elif command == "/v":
+            print(f"Server version: {VERSION}")
 
 try:
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
