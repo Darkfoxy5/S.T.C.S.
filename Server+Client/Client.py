@@ -26,7 +26,7 @@ client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect((SERVER_IP, PORT))
 
 # Sanüsrlü Şifre
-password = getpass.getpass("Şifre/Password(Herkese açık/Public Servers: 12345): ")
+password = getpass.getpass("Şifre/Password (sansürlü/censored.)(Herkese açık/Public Servers:12345): ")
 client.send(password.encode('utf-8'))
 
 def receive():
@@ -52,7 +52,7 @@ def write():
         try:
             message = input("")
             if message == "/yardım":
-                print("Kullanılabilir komutlar:(31.08.2025)")
+                print("Kullanılabilir komutlar:(04.09.2025)")
                 print("/help -> Displays the English Help menu!")
                 print("/list -> Bağlı kullanıcıları gösterir")
                 print("/clear -> Sohbetini temizler")
@@ -61,7 +61,7 @@ def write():
                 print("/quit -> Güvenli bir şekilde sunucudan çıkmanızı şağlar")
                 print("/yardım -> Yardım menüsünü gösterir")
             if message == "/help":
-                print("Available commands:(31.08.2025)")
+                print("Available commands:(04.09.2025)")
                 print("/yardım -> Türkçe Yardım menüsünü gösterir!")
                 print("/list -> Shows connected users")
                 print("/clear -> Cleans your chat")
